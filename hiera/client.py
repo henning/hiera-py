@@ -5,6 +5,7 @@
 
 from __future__ import print_function, unicode_literals
 
+import json
 import logging
 import os.path
 import subprocess
@@ -75,6 +76,7 @@ class HieraClient(object):
         """
         cmd = [self.hiera_binary,
                '--config', self.config_filename,
+               '--format', 'json',
                key_name]
         cmd.extend(map(lambda *env_var: '='.join(*env_var),
                        self.environment.iteritems()))
@@ -108,7 +110,13 @@ class HieraClient(object):
                 'message: {2} console output: {3}'.format(
                     key_name, ex.returncode, ex.message, ex.output))
         else:
-            value = output.strip()
+            try:
+                value = json.loads(output.strip())
+            except ValueError as ex:
+                raise hiera.exc.HieraError(
+                    'Failed to convert hiera output {0} for key {1}. '
+                    'message: {2}'.format(
+                        output.strip(), key_name, ex.message))
             if not value:
                 return None
             else:

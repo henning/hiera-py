@@ -73,7 +73,7 @@ class HieraClientTests(unittest.TestCase):
         successful.
         """
         h = self.create_client('my-config.yml')
-        mock_sub.return_value = 'some-value'
+        mock_sub.return_value = '"some-value"'
 
         actual_value = h._hiera('some-key')
 
@@ -87,7 +87,7 @@ class HieraClientTests(unittest.TestCase):
         successful.
         """
         h = self.create_client('my-config.yml')
-        mock_sub.return_value = '  \t\n\r\nsome-value   '
+        mock_sub.return_value = '  \t\n\r\n"some-value"   '
 
         actual_value = h._hiera('some-key')
 
@@ -118,16 +118,40 @@ class HieraClientTests(unittest.TestCase):
     def test_hiera__empty(self, mock_sub):
         """Verify None is returned when hiera output is empty string."""
         h = self.create_client('my-config.yml')
-        mock_sub.return_value = ''
+        mock_sub.return_value = '""'
 
         actual_value = h._hiera('some-key')
 
         self.assertIsNone(actual_value)
 
+    @mock.patch('subprocess.check_output')
+    def test_hiera__complex(self, mock_sub):
+        """Verify we parse complex data types."""
+        h = self.create_client('my-config.yml')
+        expected_val = {"key1": "value1",
+                        "key2": ["value2a", "value2b"]}
+        mock_sub.return_value = ('{ "key1": "value1",'
+                                 '  "key2": ["value2a", "value2b"] }')
+
+        actual_value = h._hiera('some-key')
+
+        self.assertEqual(expected_val, actual_value)
+
+    @mock.patch('subprocess.check_output')
+    def test_hiera__json_parse_error(self, mock_sub):
+        """Verify that we catch json parse errors."""
+        h = self.create_client('my-config.yml')
+        mock_sub.return_value = '{"notvalid", "json", }'
+
+        with self.assertRaises(hiera.exc.HieraError):
+            h._hiera('some-key')
+
     def test_command(self):
         """Verify command returns expected list."""
         h = self.create_client('my-config.yml')
-        expected_command = ['hiera', '--config', 'my-config.yml', 'some-key']
+        expected_command = ['hiera', '--config', 'my-config.yml',
+                            '--format', 'json',
+                            'some-key']
 
         actual_command = h._command('some-key')
 
@@ -139,7 +163,8 @@ class HieraClientTests(unittest.TestCase):
                'fqdn':        'ima-superstar',
                }
         h = self.create_client('my-config.yml', **env)
-        expected_command = ['hiera', '--config', 'my-config.yml', 'some-key',
+        expected_command = ['hiera', '--config', 'my-config.yml',
+                            '--format', 'json', 'some-key',
                             'environment=unittest', 'fqdn=ima-superstar']
 
         actual_command = h._command('some-key')
