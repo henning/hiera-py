@@ -77,7 +77,7 @@ class HieraClient(object):
                '--config', self.config_filename,
                key_name]
         cmd.extend(map(lambda *env_var: '='.join(*env_var),
-                       self.environment.iteritems()))
+                       self.environment.items()))
         return cmd
 
     def _hiera(self, key_name):
