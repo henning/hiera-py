@@ -79,7 +79,7 @@ class HieraClient(object):
                '--format', 'json',
                key_name]
         cmd.extend(map(lambda *env_var: '='.join(*env_var),
-                       self.environment.iteritems()))
+                       self.environment.items()))
         return cmd
 
     def _hiera(self, key_name):
